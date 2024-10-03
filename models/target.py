@@ -10,6 +10,7 @@ from models.measurement import Measurement
 class Target(Base):
     __tablename__ = 'targets'
     id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column()
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     target_weight: Mapped[float] = mapped_column()
     start_date: Mapped[date] = mapped_column(default=date.today())
