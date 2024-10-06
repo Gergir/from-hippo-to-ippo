@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from services.db_service import get_db
 from models import Measurement
 from schemas import MeasurementRequest, MeasurementResponse
+from helpers.exceptions import raise_http_exception_not_found
 
 router = APIRouter(tags=["measurement"], prefix="/measurement")
 
@@ -18,7 +19,7 @@ async def get_all_measurements(db: Session = Depends(get_db)):
 async def get_measurement(measurement_id: int, db: Session = Depends(get_db)):
     db_measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
     if not db_measurement:
-        raise
+        raise raise_http_exception_not_found(f"Measurement with {measurement_id} not found")
 
     return db_measurement
 
@@ -36,7 +37,7 @@ def create_measurement(request: MeasurementRequest, db: Session = Depends(get_db
 def update_measurement(measurement_id: int, request: MeasurementRequest, db: Session = Depends(get_db)):
     db_measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
     if not db_measurement:
-        raise
+        raise raise_http_exception_not_found(f"Measurement with {measurement_id} not found")
 
     new_data_for_db_measurement = request.model_dump()
     for key, value in new_data_for_db_measurement.items():
@@ -51,7 +52,7 @@ def update_measurement(measurement_id: int, request: MeasurementRequest, db: Ses
 def delete_measurement(measurement_id: int, db: Session = Depends(get_db)):
     db_measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
     if not db_measurement:
-        raise
+        raise raise_http_exception_not_found(f"Measurement with {measurement_id} not found")
 
     db.delete(db_measurement)
     db.commit()

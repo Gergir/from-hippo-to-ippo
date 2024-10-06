@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from services.db_service import get_db
 from models import Target
 from schemas import TargetRequest, TargetResponse
+from helpers.exceptions import raise_http_exception_not_found
 
 router = APIRouter(tags=["target"], prefix="/target")
 
@@ -18,7 +19,7 @@ async def get_all_targets(db: Session = Depends(get_db)):
 async def get_target(target_id: int, db: Session = Depends(get_db)):
     db_target = db.query(Target).filter(Target.id == target_id).first()
     if not db_target:
-        raise
+        raise raise_http_exception_not_found(f"Target with id {target_id} not found")
 
     return db_target
 
@@ -27,7 +28,7 @@ async def get_target(target_id: int, db: Session = Depends(get_db)):
 async def get_target_by_name(target_name: str, db: Session = Depends(get_db)):
     db_target = db.query(Target).filter(Target.title == target_name).first()
     if not db_target:
-        raise
+        raise raise_http_exception_not_found(f"Target with name {target_name} not found")
 
     return db_target
 
@@ -44,7 +45,7 @@ async def create_target(request: TargetRequest, db: Session = Depends(get_db)):
 async def update_target(target_id: int, request: TargetRequest, db: Session = Depends(get_db)):
     db_target = db.query(Target).filter(Target.id == target_id).first()
     if not db_target:
-        raise
+        raise raise_http_exception_not_found(f"Target with id {target_id} not found")
 
     new_data_for_db_target = request.model_dump()
     for key, value in new_data_for_db_target.items():
@@ -59,7 +60,7 @@ async def update_target(target_id: int, request: TargetRequest, db: Session = De
 async def delete_target(target_id: int, db: Session = Depends(get_db)):
     db_target = db.query(Target).filter(Target.id == target_id).first()
     if not db_target:
-        raise
+        raise raise_http_exception_not_found(f"Target with id {target_id} not found")
 
     db.delete(db_target)
     db.commit()

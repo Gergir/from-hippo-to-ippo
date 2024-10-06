@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from services.db_service import get_db
 from models import User
 from schemas import UserRequest, UserResponse
-
+from helpers.exceptions import raise_http_exception_not_found
 router = APIRouter(tags=["user"], prefix="/user")
 
 
@@ -18,7 +18,8 @@ async def get_all_users(db: Session = Depends(get_db)):
 async def get_user(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
-        raise
+        raise raise_http_exception_not_found(f"User with id {user_id} not found")
+
     return db_user
 
 
@@ -26,7 +27,8 @@ async def get_user(user_id: int, db: Session = Depends(get_db)):
 async def get_user_by_name(username: str, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == username).first()
     if not db_user:
-        raise
+        raise raise_http_exception_not_found(f"User with username {username} not found")
+
     return db_user
 
 
@@ -42,7 +44,7 @@ async def create_user(request: UserRequest, db: Session = Depends(get_db)):
 async def update_user(user_id: int, request: UserRequest, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
-        raise
+        raise raise_http_exception_not_found(f"User with id {user_id} not found")
 
     new_data_for_db_user = request.model_dump(exclude_unset=True)
     for key, value in new_data_for_db_user.items():
@@ -57,7 +59,8 @@ async def update_user(user_id: int, request: UserRequest, db: Session = Depends(
 async def delete_user(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
-        raise
+        raise raise_http_exception_not_found(f"User with id {user_id} not found")
+
     db.delete(db_user)
     db.commit()
     return {"message": f"User {user_id} deleted."}
