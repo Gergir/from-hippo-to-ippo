@@ -1,10 +1,8 @@
 from datetime import datetime
-
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from services.db_service import Base
-from models.target import Target
+
 
 class User(Base):
     __tablename__ = 'users'
@@ -16,6 +14,7 @@ class User(Base):
     weight: Mapped[float] = mapped_column()
 
     created_at: Mapped[datetime] = mapped_column(insert_default=func.current_timestamp(), default=None)  # handled by DB
-    updated_at: Mapped[datetime] = mapped_column(update_default=func.current_timestamp(), default=None)
+    updated_at: Mapped[datetime] = mapped_column(insert_default=func.current_timestamp(),
+                                                 onupdate=func.current_timestamp(), default=None)
 
     targets: Mapped[list["Target"]] = relationship(back_populates="user")

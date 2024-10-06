@@ -3,17 +3,15 @@ from datetime import date
 from pydantic import BaseModel
 from schemas.measurement_schema import MeasurementResponse
 
-# from schemas.measurement_schema import
 
 class TargetRequest(BaseModel):
     title: str
     user_id: int
     target_weight: float
-    start_date: date
+    start_date: date = date.today()
     end_date: date
-    public: bool
-    reached: bool
-    end_date_exceeded: bool
+    public: bool = True
+    reached: bool = False
 
 
 class TargetResponse(BaseModel):
@@ -26,7 +24,7 @@ class TargetResponse(BaseModel):
     public: bool
     reached: bool
     end_date_exceeded: bool
-    measurement: List[MeasurementResponse]
+    measurements: List[MeasurementResponse] = []
 
 
     class Config:

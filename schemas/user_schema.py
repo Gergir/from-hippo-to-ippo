@@ -14,7 +14,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
-    targets: List[TargetResponse]
+    targets: List[TargetResponse] = []
 
 
     class Config:
