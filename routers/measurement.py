@@ -1,28 +1,58 @@
-from fastapi import APIRouter
+from typing import List
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from services.db_service import get_db
+from models import Measurement
+from schemas import MeasurementRequest, MeasurementResponse
 
 router = APIRouter(tags=["measurement"], prefix="/measurement")
 
 
-@router.get("/")
-async def get_all_measurements():
-    return {"message": "All found measurements"}
+@router.get("/", response_model=List[MeasurementResponse])
+async def get_all_measurements(db: Session = Depends(get_db)):
+    db_measurements = db.query(Measurement).all()
+    return db_measurements
 
 
-@router.get("/{measurement_id}")
-async def get_measurement(measurement_id: int):
-    return {"message": f"Measurement with id {measurement_id} found"}
+@router.get("/{measurement_id}", response_model=MeasurementResponse)
+async def get_measurement(measurement_id: int, db: Session = Depends(get_db)):
+    db_measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
+    if not db_measurement:
+        raise
+
+    return db_measurement
 
 
-@router.post("/create")
-def create_measurement():
-    return {"message": "Measurement created"}
+@router.post("/create", response_model=MeasurementResponse)
+def create_measurement(request: MeasurementRequest, db: Session = Depends(get_db)):
+    db_new_measurement = Measurement(**request.model_dump())
+    db.add(db_new_measurement)
+    db.commit()
+
+    return db_new_measurement
 
 
-@router.patch("/update/{measurement_id}")
-def update_measurement(measurement_id: int):
-    return {"message": f"Measurement with id {measurement_id} updated"}
+@router.patch("/update/{measurement_id}", response_model=MeasurementResponse)
+def update_measurement(measurement_id: int, request: MeasurementRequest, db: Session = Depends(get_db)):
+    db_measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
+    if not db_measurement:
+        raise
+
+    new_data_for_db_measurement = request.model_dump()
+    for key, value in new_data_for_db_measurement.items():
+        setattr(db_measurement, key, value)
+
+    db.commit()
+    db.refresh(db_measurement)
+    return db_measurement
 
 
 @router.delete("/delete/{measurement_id}")
-def delete_measurement(measurement_id: int):
-    return {"message": f"Measurement with id {measurement_id} deleted"}
+def delete_measurement(measurement_id: int, db: Session = Depends(get_db)):
+    db_measurement = db.query(Measurement).filter(Measurement.id == measurement_id).first()
+    if not db_measurement:
+        raise
+
+    db.delete(db_measurement)
+    db.commit()
+    return {"message": f"Measurement {measurement_id} deleted."}
