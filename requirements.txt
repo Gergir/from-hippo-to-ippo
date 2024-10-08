@@ -17,3 +17,4 @@ passlib~=1.7.4
 PyJWT~=2.9.0
 bcrypt~=4.2.0
 sqlalchemy-stubs~=0.4 # Resolve type hint warnings related to sql-alchemy caused by pycharm e.g. model.id == request_id
+python-dotenv~=1.0.1
