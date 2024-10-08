@@ -1,40 +1,46 @@
-from typing import List
+from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from services.db_service import get_db
 from models import Target
 from schemas import TargetRequest, TargetResponse
-from helpers.exceptions import raise_http_exception_not_found
-
+from helpers.exceptions import http_exception_not_found
+from auth import oauth2_scheme
 router = APIRouter(tags=["target"], prefix="/target")
 
 
-@router.get("/", response_model=List[TargetResponse])
-async def get_all_targets(db: Session = Depends(get_db)):
+@router.get("/", response_model=list[TargetResponse])
+async def get_all_targets(db: Annotated[Session, Depends(get_db)]):
     db_targets = db.query(Target).all()
     return db_targets
 
 
 @router.get("/{target_id}", response_model=TargetResponse)
-async def get_target(target_id: int, db: Session = Depends(get_db)):
+async def get_target(target_id: int, db: Annotated[Session, Depends(get_db)]):
     db_target = db.query(Target).filter(Target.id == target_id).first()
     if not db_target:
-        raise raise_http_exception_not_found(f"Target with id {target_id} not found")
+        raise http_exception_not_found(f"Target with id {target_id} not found")
 
     return db_target
 
 
 @router.get("/name/{target_name}", response_model=TargetResponse)
-async def get_target_by_name(target_name: str, db: Session = Depends(get_db)):
+async def get_target_by_name(target_name: str, db: Annotated[Session, Depends(get_db)]):
     db_target = db.query(Target).filter(Target.title == target_name).first()
     if not db_target:
-        raise raise_http_exception_not_found(f"Target with name {target_name} not found")
+        raise http_exception_not_found(f"Target with name {target_name} not found")
 
     return db_target
 
 
 @router.post("/create", response_model=TargetResponse)
-async def create_target(request: TargetRequest, db: Session = Depends(get_db)):
+async def create_target(
+        request: TargetRequest,
+        db: Annotated[Session,
+        Depends(get_db)],
+        token: Annotated[str, Depends(oauth2_scheme)]
+):
+
     db_new_target = Target(**request.model_dump())
     db.add(db_new_target)
     db.commit()
@@ -42,10 +48,15 @@ async def create_target(request: TargetRequest, db: Session = Depends(get_db)):
 
 
 @router.patch("/update/{target_id}", response_model=TargetResponse)
-async def update_target(target_id: int, request: TargetRequest, db: Session = Depends(get_db)):
+async def update_target(
+        target_id: int, request: TargetRequest,
+        db: Annotated[Session, Depends(get_db)],
+        token: Annotated[str, Depends(oauth2_scheme)]
+):
+
     db_target = db.query(Target).filter(Target.id == target_id).first()
     if not db_target:
-        raise raise_http_exception_not_found(f"Target with id {target_id} not found")
+        raise http_exception_not_found(f"Target with id {target_id} not found")
 
     new_data_for_db_target = request.model_dump()
     for key, value in new_data_for_db_target.items():
@@ -57,10 +68,10 @@ async def update_target(target_id: int, request: TargetRequest, db: Session = De
 
 
 @router.delete("/delete/{target_id}")
-async def delete_target(target_id: int, db: Session = Depends(get_db)):
+async def delete_target(target_id: int, db: Annotated[Session, Depends(get_db)]):
     db_target = db.query(Target).filter(Target.id == target_id).first()
     if not db_target:
-        raise raise_http_exception_not_found(f"Target with id {target_id} not found")
+        raise http_exception_not_found(f"Target with id {target_id} not found")
 
     db.delete(db_target)
     db.commit()
