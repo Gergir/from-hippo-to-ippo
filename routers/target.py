@@ -6,7 +6,7 @@ from models import Target
 from schemas import TargetRequest, TargetResponse
 from helpers.exceptions import http_exception_not_found
 from auth import oauth2_scheme
-router = APIRouter(tags=["target"], prefix="/target")
+router = APIRouter(tags=["target"], prefix="/targets")
 
 
 @router.get("/", response_model=list[TargetResponse])

@@ -6,7 +6,7 @@ from models import Measurement
 from schemas import MeasurementRequest, MeasurementResponse
 from helpers.exceptions import http_exception_not_found
 
-router = APIRouter(tags=["measurement"], prefix="/measurement")
+router = APIRouter(tags=["measurement"], prefix="/measurements")
 
 
 @router.get("/", response_model=list[MeasurementResponse])

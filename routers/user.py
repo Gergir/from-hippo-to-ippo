@@ -7,7 +7,7 @@ from models import User
 from schemas import UserRequest, UserResponse
 from helpers.exceptions import http_exception_not_found
 
-router = APIRouter(tags=["user"], prefix="/user")
+router = APIRouter(tags=["user"], prefix="/users")
 
 
 @router.get("/", response_model=list[UserResponse])
