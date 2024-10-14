@@ -7,7 +7,7 @@ from services.db_service import Base
 class User(Base):
     __tablename__ = 'users'
     id: Mapped[int] = mapped_column(primary_key=True)
-    role_id: Mapped[int] = mapped_column(ForeignKey('roles.id'))
+    role_id: Mapped[int] = mapped_column(ForeignKey('roles.id'), insert_default=3)
     username: Mapped[str] = mapped_column(index=True, unique=True)
     email: Mapped[str] = mapped_column(index=True, unique=True)
     password: Mapped[str] = mapped_column()

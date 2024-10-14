@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi.security import OAuth2PasswordBearer
-from helpers.exceptions import http_exception_unauthorized
+from helpers.exceptions import http_exception_unauthorized, http_exception_forbidden
 from services.db_service import get_db
 from models import User
 from auth import Hash
@@ -66,6 +66,15 @@ async def get_current_user(
     if not current_user:
         raise http_exception_unauthorized()
     return current_user
+
+
+async def get_current_admin_user(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+    admin_role = "admin"
+    current_user_role = current_user.role.role_type.value
+    if current_user_role == admin_role:
+        return current_user
+    else:
+        raise http_exception_forbidden()
 
 
 @router.post("/token")
