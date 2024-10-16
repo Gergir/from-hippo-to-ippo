@@ -77,6 +77,14 @@ async def get_current_admin_user(current_user: Annotated[User, Depends(get_curre
         raise http_exception_forbidden()
 
 
+def is_admin(current_user: User) -> bool:
+    admin_role = "admin"
+    current_user_role = current_user.role.role_type.value
+    if current_user_role == admin_role:
+        return True
+    return False
+
+
 @router.post("/token")
 async def login_for_access_token(
         form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
