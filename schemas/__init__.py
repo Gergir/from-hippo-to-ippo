@@ -1,9 +1,11 @@
-from .user_schema import UserRequest, UserResponse
+from .user_schema import UserRequest, UserResponse, UserResponseOnlyIdEmail
 from .target_schema import TargetRequest, TargetResponse
 from .measurement_schema import MeasurementRequest, MeasurementResponse
+from .role_schema import RoleRequest, RoleResponse
 
 __all__ = [
-    "UserRequest", "UserResponse",
+    "UserRequest", "UserResponse", "UserResponseOnlyIdEmail",
     "TargetRequest", "TargetResponse",
-    "MeasurementRequest", "MeasurementResponse"
+    "MeasurementRequest", "MeasurementResponse",
+    "RoleRequest", "RoleResponse",
 ]

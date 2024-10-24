@@ -3,7 +3,6 @@ from pydantic import BaseModel
 
 
 class MeasurementRequest(BaseModel):
-    target_id: int
     weight: float
     measurement_date: date
 
@@ -15,5 +14,5 @@ class MeasurementResponse(BaseModel):
     measurement_date: date
 
 
-    class Config:
-        orm_mode = True
+    class ConfigDict:
+        from_attributes = True
