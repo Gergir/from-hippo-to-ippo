@@ -26,7 +26,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 router = APIRouter(tags=["Auth"])
 
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 

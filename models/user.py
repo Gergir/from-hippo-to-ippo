@@ -19,5 +19,4 @@ class User(Base):
                                                  onupdate=func.current_timestamp(), default=None)
 
     targets: Mapped[list["Target"]] = relationship(back_populates="user")
-    role:Mapped["Role"] = relationship(back_populates='users')
-
+    role: Mapped["Role"] = relationship(back_populates='users')

@@ -11,7 +11,7 @@ class Measurement(Base):
     weight: Mapped[float] = mapped_column()
     measurement_date: Mapped[date] = mapped_column()
 
-    created_at: Mapped[datetime] = mapped_column(insert_default=func.current_timestamp(), default=None) # handled by DB
+    created_at: Mapped[datetime] = mapped_column(insert_default=func.current_timestamp(), default=None)  # handled by DB
     updated_at: Mapped[datetime] = mapped_column(insert_default=func.current_timestamp(),
                                                  onupdate=func.current_timestamp(), default=None)
 
