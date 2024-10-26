@@ -1,10 +1,10 @@
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MeasurementRequest(BaseModel):
-    weight: float
-    measurement_date: date
+    weight: float = Field(ge=30, le=500)
+    measurement_date: date = date.today()
 
 
 class MeasurementResponse(BaseModel):
@@ -12,7 +12,6 @@ class MeasurementResponse(BaseModel):
     target_id: int
     weight: float
     measurement_date: date
-
 
     class ConfigDict:
         from_attributes = True

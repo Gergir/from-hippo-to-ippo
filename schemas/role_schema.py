@@ -6,6 +6,7 @@ from schemas import UserResponseOnlyIdEmail
 class RoleRequest(BaseModel):
     role_type: RoleType
 
+
 class RoleResponse(BaseModel):
     id: int
     role_type: RoleType
