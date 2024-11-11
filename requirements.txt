@@ -19,3 +19,4 @@ bcrypt~=4.2.0
 sqlalchemy-stubs~=0.4 # Resolve type hint warnings related to sql-alchemy caused by pycharm e.g. model.id == request_id
 python-dotenv~=1.0.1
 email-validator~=2.2.0
+psycopg2~=2.9.10

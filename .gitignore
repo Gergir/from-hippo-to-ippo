@@ -235,4 +235,5 @@ fabric.properties
 
 # Database
 database.db
+create_test_database.py
 
