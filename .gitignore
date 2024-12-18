@@ -235,5 +235,5 @@ fabric.properties
 
 # Database
 database.db
-create_test_database.py
+tests/create_test_database.py
 
