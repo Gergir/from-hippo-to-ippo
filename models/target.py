@@ -21,4 +21,4 @@ class Target(Base):
                                                  onupdate=func.current_timestamp(), default=None)
 
     user: Mapped["User"] = relationship(back_populates="targets")
-    measurements: Mapped[list["Measurement"]] = relationship(back_populates="target")
+    measurements: Mapped[list["Measurement"]] = relationship(back_populates="target", cascade="all, delete-orphan")
