@@ -62,6 +62,7 @@ async def update_user(
     if not request.model_dump(exclude_unset=True):
         raise exceptions.http_exception_bad_request("No data provided")
 
+    db_user = queries.find_user(db, user_id)
     if not db_user:
         raise exceptions.http_exception_not_found(f"User with id {user_id} not found")
     if db_user.id != current_user.id and not is_admin(current_user):
@@ -92,11 +93,11 @@ async def delete_user(
         Depends(get_current_user)]
 ):
     db_user = queries.find_user(db, user_id)
-    if db_user.id != current_user.id and not is_admin(current_user):
-        raise exceptions.http_exception_forbidden()
     if not db_user:
         raise exceptions.http_exception_not_found(f"User with id {user_id} not found")
+    if db_user.id != current_user.id and not is_admin(current_user):
+        raise exceptions.http_exception_forbidden()
 
     db.delete(db_user)
     db.commit()
-    return {"message": f"User {user_id} deleted."}
+    return {"message": f"User with id {user_id} deleted successfully"}
