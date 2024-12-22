@@ -18,5 +18,5 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(insert_default=func.current_timestamp(),
                                                  onupdate=func.current_timestamp(), default=None)
 
-    targets: Mapped[list["Target"]] = relationship(back_populates="user")
+    targets: Mapped[list["Target"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     role: Mapped["Role"] = relationship(back_populates='users')

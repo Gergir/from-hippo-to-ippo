@@ -49,6 +49,6 @@ def create_test_entities():
 
 if __name__ == '__main__': # Works with app-test docker service
     db_path = os.getenv("DATABASE_URL").split('///')[1]  # DATABASE_URL: sqlite:///. ...
-    if not os.path.exists(db_path):
-        Base.metadata.create_all(bind=engine)
-        create_test_entities()
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    create_test_entities()

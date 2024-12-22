@@ -26,3 +26,10 @@ def http_exception_conflict(message="Unique value required"):
         status_code=status.HTTP_409_CONFLICT,
         detail=message
     )
+
+
+def http_exception_bad_request(message="Bad request"):
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=message
+    )
