@@ -6,7 +6,7 @@ from auth.auth import is_admin
 from helpers.queries import find_target
 from services.db_service import get_db
 from models import Target, User
-from schemas import TargetRequest, TargetResponse
+from schemas import TargetRequest, TargetRequestUpdate, TargetResponse
 from helpers import exceptions, queries
 from auth import get_current_user
 
@@ -70,7 +70,7 @@ async def create_target(
 async def update_target(
         user_id: int,
         target_id: int,
-        request: TargetRequest,
+        request: TargetRequestUpdate,
         db: Annotated[Session, Depends(get_db)],
         current_user: Annotated[User, Depends(get_current_user)]
 ):
@@ -80,7 +80,7 @@ async def update_target(
     if not db_target:
         raise exceptions.http_exception_not_found(f"Target with id {target_id} for user {user_id} not found")
 
-    new_data_for_db_target = request.model_dump()
+    new_data_for_db_target = request.model_dump(exclude_unset=True)
     for key, value in new_data_for_db_target.items():
         setattr(db_target, key, value)
     db.commit()
@@ -101,4 +101,4 @@ async def delete_target(
 
     db.delete(db_target)
     db.commit()
-    return {"message": f"Target with id {target_id} deleted"}
+    return {"message": f"Target with id {target_id} deleted successfully"}

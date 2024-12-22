@@ -10,6 +10,12 @@ class TargetRequest(BaseModel):
     end_date: date
     public: bool = True
 
+class TargetRequestUpdate(BaseModel):
+    name: str | None = Field(None, min_length=3, max_length=50)
+    target_weight: float | None = Field(None, ge=30, le=300)
+    start_date: date | None = None
+    end_date: date | None = None
+    public: bool | None = None
 
 class TargetResponse(BaseModel):
     id: int
@@ -21,7 +27,7 @@ class TargetResponse(BaseModel):
     public: bool
     reached: bool
     closed: bool
-    measurements: list[MeasurementResponse] = []
+    measurements: list[MeasurementResponse] = Field(default_factory=list)
 
     class ConfigDict:
         from_attributes = True
