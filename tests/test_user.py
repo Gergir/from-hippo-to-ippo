@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
+from tests import correct_token_user, correct_token_admin
 
 client = TestClient(app)
 
@@ -30,12 +31,10 @@ def check_satisfied_conditions(method, new_entity, token=None):
 
     incorrect_data = (
         ["n4", "string_too_short", "username"],
-        ["012345678910111213141516171819202122232425262728"
-         "29303132333435363738394041424344454647484950", "string_too_long", "username"],
+        ["a" * 51, "string_too_long", "username"],
         ["incorrect_emai@", "value_error", "email"],
         ["123", "string_too_short", "password"],
-        ["012345678910111213141516171819202122232425262728"
-         "29303132333435363738394041424344454647484950", "string_too_long", "password"],
+        ["a" * 51, "string_too_long", "password"],
         [59, "greater_than_equal", "height"],
         [281, "less_than_equal", "height"],
         [29, "greater_than_equal", "weight"],
@@ -56,47 +55,15 @@ def check_satisfied_conditions(method, new_entity, token=None):
         assert field in data["detail"][0]["loc"]
 
 
-# Fixtures
 @pytest.fixture()
-def correct_token_admin():
-    auth = client.post(
-        "/token",
-        data={
-            "username": "admin@test.com",
-            "password": "admin"
-        })
-    access_token = auth.json().get("access_token")
-    assert auth.status_code == 200
-    return access_token
-
-
-@pytest.fixture()
-def correct_token_user():
-    auth = client.post(
-        "/token",
-        data={
-            "username": "user@test.com",
-            "password": "user"
-        })
-    access_token = auth.json().get("access_token")
-    assert auth.status_code == 200
-    return access_token
-
-
-# AUTH
-def test_correct_auth(correct_token_user):
-    assert correct_token_user
-
-
-def test_incorrect_auth():
-    auth = client.post(
-        "/token",
-        data={
-            "username": "wrong_cred",
-            "password": "wrong_cred"
-        })
-    assert auth.status_code == 401
-    assert auth.json() == {"detail": "Invalid username or password"}
+def valid_user():
+    return {
+        "username": "test_new_user",
+        "email": "test_new_user@test.com",
+        "password": "<PASSWORD>",
+        "height": 280,
+        "weight": 500,
+    }
 
 
 # GET
@@ -117,7 +84,7 @@ def test_correct_get_user_me(correct_token_user):
     assert data["email"] == "user@test.com"
 
 
-def test_incorrect_get_user_me():
+def test_incorrect_get_user_me_not_authenticated():
     response = client.get("/users/me")
     assert response.status_code == 401
     data = response.json()
@@ -145,17 +112,24 @@ def test_incorrect_get_user_not_found():
     assert response.json() == {"detail": "User with id 999999 not found"}
 
 
-# POST
-def test_correct_create_user():
-    new_user = {
-        "username": "test_new_user",
-        "email": "test_new_user@test.com",
-        "password": "<PASSWORD>",
-        "height": 280,
-        "weight": 500,
-    }
+def test_correct_get_user_by_name():
+    response = client.get("/users/name/test_user")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["username"] == "test_user"
+    assert data["email"] == "user@test.com"
+    assert data["role_id"] == 3
 
-    response = client.post("/users", json=new_user)
+
+def test_incorrect_get_user_by_name_not_found():
+    response = client.get("/users/name/NonexistentUser")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "User with username NonexistentUser not found"}
+
+
+# POST
+def test_correct_create_user(valid_user):
+    response = client.post("/users", json=valid_user)
     assert response.status_code == 200
     data = response.json()
 
@@ -165,28 +139,14 @@ def test_correct_create_user():
     assert data["role_id"] == 3
 
 
-def test_incorrect_create_user_username_already_exists():
-    new_user = {
-        "username": "test_new_user",
-        "email": "test_new_user@test.com",
-        "password": "<PASSWORD>",
-        "height": 280,
-        "weight": 500,
-    }
-
-    response = client.post("/users", json=new_user)
+def test_incorrect_create_user_username_already_exists(valid_user):
+    response = client.post("/users", json=valid_user)
     assert response.status_code == 409
     assert response.json() == {"detail": "User with this username already exists"}
 
 
-def test_incorrect_create_user_email_already_exists():
-    new_user = {
-        "username": "test_new_user2",
-        "email": "test_new_user@test.com",
-        "password": "<PASSWORD>",
-        "height": 280,
-        "weight": 500,
-    }
+def test_incorrect_create_user_email_already_exists(valid_user):
+    new_user = {**valid_user, "username": "test_new_user2"}
 
     response = client.post("/users", json=new_user)
     assert response.status_code == 409
@@ -194,9 +154,7 @@ def test_incorrect_create_user_email_already_exists():
 
 
 def test_incorrect_create_user_not_all_required_fields_filled():
-    new_user = {
-        "username": "test_new_user3"
-    }
+    new_user = {"username": "test_new_user3"}
 
     response = client.post("/users", json=new_user)
     data = response.json()
@@ -204,18 +162,13 @@ def test_incorrect_create_user_not_all_required_fields_filled():
     assert data["detail"][0]["msg"] == "Field required"
 
 
-def test_incorrect_create_user_fields_conditions_not_satisfied():
-    new_user = {
-        "username": "test_new_user2",
-        "email": "test_new_user2@test.com",
-        "password": "<PASSWORD>",
-        "height": 280,
-        "weight": 500,
-    }
-
+def test_incorrect_create_user_fields_conditions_not_satisfied(valid_user):
+    # new_user - inherit from valid_user, but replace username and email with unique values
+    new_user = {**valid_user, "username": "test_new_user2", "email": "test_new_user2@test.com"}
     check_satisfied_conditions("post", new_entity=new_user)
 
 
+# PATCH
 def test_correct_update_user_by_the_same_user(correct_token_user):
     user_to_update = {
         "username": "test_new_user_updated",
@@ -253,7 +206,7 @@ def test_correct_update_user_by_admin(correct_token_admin):
     assert data["role_id"] == 3
 
 
-def test_incorrect_update_user_by_other_non_admin_user_not_authenticated(correct_token_user):
+def test_incorrect_update_user_by_other_non_admin_user_not_authorized(correct_token_user):
     user_to_update = {
         "username": "test_new_user_updated_but_not_authorized",
     }
@@ -333,13 +286,13 @@ def test_incorrect_update_user_fields_conditions_not_satisfied(correct_token_adm
     check_satisfied_conditions("patch", new_entity=user_to_update, token=correct_token_admin)
 
 
+# DELETE
 def test_incorrect_delete_user_not_authenticated():
     response = client.delete("/users/2")
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated"}
 
 
-# DELETE
 def test_incorrect_delete_user_by_other_non_admin_user_not_authorized(correct_token_user):
     response = client.delete(
         "/users/3",
@@ -370,8 +323,8 @@ def test_correct_delete_user_with_targets_by_own_user(correct_token_user):
     assert response.json() == {"message": f"User with id 2 deleted successfully"}
 
 
-def test_correct_delete_user_with_no_target_by_admin(
-        correct_token_admin):  # Moved to the end for sake of the deletion tests
+# Moved to the end for sake of the deletion tests
+def test_correct_delete_user_with_no_target_by_admin(correct_token_admin):
     response = client.delete(
         "/users/3",
         headers={"Authorization": f"Bearer {correct_token_admin}"}
