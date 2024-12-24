@@ -6,9 +6,12 @@ from services.db_service import Base
 
 
 class RoleType(enum.Enum):
-    user = 'user'
     premium = 'premium'
     admin = 'admin'
+    user = 'user'
+    tester = 'tester'
+    subscriber = 'subscriber' # newsletter subscriber
+
 
 
 class Role(Base):

@@ -91,4 +91,4 @@ async def delete_role(
 
     db.delete(db_role)
     db.commit()
-    return {"message": f"Role type {db_role.role_type} with id {role_id} deleted"}
+    return {"message": f"Role type {db_role.role_type.value} with id {role_id} deleted successfully"}

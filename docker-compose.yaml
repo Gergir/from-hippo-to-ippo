@@ -27,10 +27,11 @@ services:
     environment:
       - ENV=TEST
       - PYTHONPATH=/app
-    entrypoint: ["sh", "-c",
-      "python /app/tests/create_test_database.py
-       && pytest -v 
-       && uvicorn main:app --reload --host 0.0.0.0 --port 8080"]
+    entrypoint: [
+      "sh", "-c", "python /app/tests/create_test_database.py 
+      && pytest -n auto --dist=loadfile -v 
+      && uvicorn main:app --reload --host 0.0.0.0 --port 8080"
+    ]
 
 
   db:
