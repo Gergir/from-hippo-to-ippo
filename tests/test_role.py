@@ -3,7 +3,8 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from main import app
 from models import RoleType
-from tests import correct_token_admin, correct_token_user
+
+"""This test requires the presence of 'admin', 'premium', 'user' roles for the tests to be successful."""
 
 client = TestClient(app)
 

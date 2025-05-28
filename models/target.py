@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from sqlalchemy import func, ForeignKey
+from sqlalchemy import func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from services.db_service import Base
 
@@ -7,6 +7,7 @@ from services.db_service import Base
 class Target(Base):
     __tablename__ = 'targets'
     id: Mapped[int] = mapped_column(primary_key=True)
+    sequence_number: Mapped[int] = mapped_column()
     name: Mapped[str] = mapped_column(index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     target_weight: Mapped[float] = mapped_column()
@@ -20,5 +21,6 @@ class Target(Base):
     updated_at: Mapped[datetime] = mapped_column(insert_default=func.current_timestamp(),
                                                  onupdate=func.current_timestamp(), default=None)
 
+    __table_args__ = UniqueConstraint("user_id", "sequence_number", name="unique_user_target_sequence")
     user: Mapped["User"] = relationship(back_populates="targets")
     measurements: Mapped[list["Measurement"]] = relationship(back_populates="target", cascade="all, delete-orphan")

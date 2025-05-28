@@ -1,7 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from tests import correct_token_user, correct_token_admin
+
+"""This test requires the presence of both an admin user and a standard user for the tests to be successful."""
 
 client = TestClient(app)
 
@@ -20,7 +21,7 @@ def incorrect_fields_data() -> list[tuple[str | float, str, str]]:
     return [
         ("n4", "string_too_short", "username"),
         ("a" * 51, "string_too_long", "username"),
-        ("incorrect_emai@", "value_error", "email"),
+        ("incorrect_emai@l", "value_error", "email"),
         ("123", "string_too_short", "password"),
         ("a" * 51, "string_too_long", "password"),
         (59, "greater_than_equal", "height"),
@@ -31,48 +32,7 @@ def incorrect_fields_data() -> list[tuple[str | float, str, str]]:
 
 
 @pytest.fixture()
-def check_satisfied_conditions():
-    """
-    A test set-up function that validates validation errors for user creation and updates.
-
-
-
-
-    """
-
-    def _check_satisfied_conditions(method, url, new_entity, token=None):
-
-        """
-        Args:
-        method (str): The HTTP method to test - either "post" for user creation
-            or "patch" for user updates
-        new_entity (dict): The base user data dictionary containing valid values.
-            Each test case will modify one field with an invalid value
-        token (str, optional): JWT token for authorization. Required only for
-            patch operations. Defaults to None.
-
-    Returns:
-        None: Assertions are performed within the function
-
-        """
-        incorrect_data = incorrect_fields_data
-        for li in incorrect_data:
-            data_to_replace = li[0]
-            error_type = li[1]
-            field = li[2]
-            if method == "patch":
-                response = client.patch("/users/2", json={**new_entity, field: data_to_replace},
-                                        headers={"Authorization": f"Bearer {token}"})
-            else:
-                response = client.post("/users", json={**new_entity, field: data_to_replace})
-            data = response.json()
-        assert response.status_code == 422
-        assert data["detail"][0]["type"] == error_type
-        assert field in data["detail"][0]["loc"]
-    return _check_satisfied_conditions
-
-@pytest.fixture()
-def valid_user():
+def valid_user() -> dict:
     return {
         "username": "test_new_user",
         "email": "test_new_user@test.com",
@@ -81,12 +41,18 @@ def valid_user():
         "weight": 500,
     }
 
+
 @pytest.fixture()
-def create_temporally_user(valid_user, correct_token_admin):
+def temporary_user(valid_user, correct_token_admin) -> dict:
+    """
+    Create temporary user for testing purpose. Delete it after test. Based on valid_user fixture.
+    To get its password refer to valid_user['password'], because user response schema does not return password.
+    """
     response = client.post("/users", json=valid_user)
     data = response.json()
     yield data
     client.delete(f"/users/{data['id']}", headers={"Authorization": f"Bearer {correct_token_admin}"})
+
 
 # GET
 def test_correct_get_all_users():
@@ -150,22 +116,22 @@ def test_incorrect_get_user_by_name_not_found():
 
 
 # POST
-def test_correct_create_user(create_temporally_user):
-    data = create_temporally_user
+def test_correct_create_user(temporary_user):
+    data = temporary_user
     assert "id" in data
     assert data["username"] == "test_new_user"
     assert data["email"] == "test_new_user@test.com"
     assert data["role_id"] == 3
 
 
-def test_incorrect_create_user_username_already_exists(create_temporally_user, valid_user):
+def test_incorrect_create_user_username_already_exists(temporary_user, valid_user):
     response = client.post("/users", json=valid_user)
     assert response.status_code == 409
     assert response.json() == {"detail": "User with this username already exists"}
 
 
-def test_incorrect_create_user_email_already_exists(create_temporally_user, valid_user):
-    new_user = {**valid_user, "username": "test_new_user2"} # replace username value to avoid username conflict
+def test_incorrect_create_user_email_already_exists(temporary_user, valid_user):
+    new_user = {**valid_user, "username": "test_new_user2"}  # replace username value to avoid username conflict
 
     response = client.post("/users", json=new_user)
     assert response.status_code == 409
@@ -181,22 +147,27 @@ def test_incorrect_create_user_not_all_required_fields_filled(valid_user):
     assert data["detail"][0]["msg"] == "Field required"
 
 
-def test_incorrect_create_user_fields_conditions_not_satisfied(valid_user, incorrect_fields_data):
-    incorrect_data = incorrect_fields_data
-    for
-    check_satisfied_conditions("post", new_entity=valid_user)
+def test_incorrect_create_user_fields_conditions_not_satisfied(valid_user, incorrect_fields_data, make_request):
+    for incorrect_field_entry in incorrect_fields_data:
+        data_to_insert = incorrect_field_entry[0]
+        error_type = incorrect_field_entry[1]
+        field_to_check = incorrect_field_entry[2]
+
+        response = make_request(method="post", url="/users", data={**valid_user, field_to_check: data_to_insert})
+        assert response.status_code == 422
+        assert field_to_check in response.json()["detail"][0]["loc"]
+        assert response.json()["detail"][0]["type"] == error_type
 
 
 # PATCH
-def test_correct_update_user_by_the_same_user(correct_token_user):
-    user_to_update = {
-        "username": "test_new_user_updated",
-    }
+def test_correct_update_user_by_the_same_user(temporary_user, valid_user, correct_token_specified_user):
+    temporary_user_token = correct_token_specified_user(valid_user["email"], valid_user["password"])
 
+    data_to_update = {"username": "test_new_user_updated"}
     response = client.patch(
-        "/users/2",
-        json=user_to_update,
-        headers={"Authorization": f"Bearer {correct_token_user}"}
+        f"/users/{temporary_user['id']}",
+        json=data_to_update,
+        headers={"Authorization": f"Bearer {temporary_user_token}"}
     )
 
     assert response.status_code == 200
@@ -205,15 +176,15 @@ def test_correct_update_user_by_the_same_user(correct_token_user):
     assert data["username"] == "test_new_user_updated"
 
 
-def test_correct_update_user_by_admin(correct_token_admin):
-    user_to_update = {
+def test_correct_update_user_by_admin(temporary_user, correct_token_admin):
+    data_to_update = {
         "username": "test_new_user_updated_by_admin",
         "email": "test_new_user@test.com"
     }
 
     response = client.patch(
-        "/users/3",
-        json=user_to_update,
+        f"/users/{temporary_user['id']}",
+        json=data_to_update,
         headers={"Authorization": f"Bearer {correct_token_admin}"}
     )
 
@@ -225,28 +196,22 @@ def test_correct_update_user_by_admin(correct_token_admin):
     assert data["role_id"] == 3
 
 
-def test_incorrect_update_user_by_other_non_admin_user_not_authorized(correct_token_user):
-    user_to_update = {
-        "username": "test_new_user_updated_but_not_authorized",
-    }
+def test_incorrect_update_user_by_other_non_admin_user_not_authorized(temporary_user, correct_token_user):
+    data_to_update = {"username": "test_new_user_updated_but_not_authorized"}
 
     response = client.patch(
-        "/users/3",
-        json=user_to_update,
+        f"/users/{temporary_user['id']}",
+        json=data_to_update,
         headers={"Authorization": f"Bearer {correct_token_user}"}
     )
     assert response.status_code == 403
     assert response.json() == {"detail": "Forbidden, you lack privileges for this action"}
 
 
-def test_incorrect_update_user_username_already_exists(correct_token_admin):
-    user_to_update = {
-        "username": "test_new_user_updated_by_admin",
-    }
-
+def test_incorrect_update_user_username_already_exists(temporary_user, correct_token_admin):
     response = client.patch(
         "/users/2",
-        json=user_to_update,
+        json={"username": temporary_user["username"]},
         headers={"Authorization": f"Bearer {correct_token_admin}"}
     )
 
@@ -254,42 +219,38 @@ def test_incorrect_update_user_username_already_exists(correct_token_admin):
     assert response.json() == {"detail": "User with this username already exists"}
 
 
-def test_incorrect_update_user_email_already_exists(correct_token_user):
-    user_to_update = {
-        "email": "admin@test.com"
-    }
+def test_incorrect_update_user_email_already_exists(temporary_user, valid_user, correct_token_specified_user):
+    temporary_user_token = correct_token_specified_user(valid_user["email"], valid_user["password"])
+    data_to_update = {"email": "admin@test.com"}
 
     response = client.patch(
-        "/users/2",
-        json=user_to_update,
-        headers={"Authorization": f"Bearer {correct_token_user}"}
+        f"/users/{temporary_user['id']}",
+        json=data_to_update,
+        headers={"Authorization": f"Bearer {temporary_user_token}"}
     )
 
     assert response.status_code == 409
     assert response.json() == {"detail": "User with this email already exists"}
 
 
-def test_incorrect_update_user_empty_request(correct_token_user):
-    user_to_update = {}
+def test_incorrect_update_user_empty_request(temporary_user, valid_user, correct_token_specified_user):
+    temporary_user_token = correct_token_specified_user(valid_user["email"], valid_user["password"])
+    data_to_update = {}
 
     response = client.patch(
-        "/users/2",
-        json=user_to_update,
-        headers={"Authorization": f"Bearer {correct_token_user}"}
+        f"/users/{temporary_user['id']}",
+        json=data_to_update,
+        headers={"Authorization": f"Bearer {temporary_user_token}"}
     )
 
     assert response.status_code == 400
     assert response.json() == {"detail": "No data provided"}
 
 
-def test_incorrect_update_user_not_found(correct_token_admin):
-    user_to_update = {
-        "username": "test_new_user_updated",
-    }
-
+def test_incorrect_update_user_not_found(valid_user, correct_token_admin):
     response = client.patch(
         "/users/999999",
-        json=user_to_update,
+        json={"username": valid_user["username"]},
         headers={"Authorization": f"Bearer {correct_token_admin}"}
     )
 
@@ -297,24 +258,59 @@ def test_incorrect_update_user_not_found(correct_token_admin):
     assert response.json() == {"detail": "User with id 999999 not found"}
 
 
-def test_incorrect_update_user_fields_conditions_not_satisfied(correct_token_admin):
-    user_to_update = {
-        "username": "test_new_user_updated",
-    }
+def test_incorrect_update_user_fields_conditions_not_satisfied(
+        temporary_user,
+        incorrect_fields_data,
+        make_request,
+        correct_token_admin
+):
+    for incorrect_field_entry in incorrect_fields_data:
+        data_to_insert = incorrect_field_entry[0]
+        error_type = incorrect_field_entry[1]
+        field_to_check = incorrect_field_entry[2]
 
-    check_satisfied_conditions("patch", new_entity=user_to_update, token=correct_token_admin)
+        response = make_request(
+            method="patch",
+            url=f"/users/{temporary_user["id"]}",
+            data={field_to_check: data_to_insert},
+            token=correct_token_admin
+        )
+        assert response.status_code == 422
+        assert field_to_check in response.json()["detail"][0]["loc"]
+        assert response.json()["detail"][0]["type"] == error_type
 
 
 # DELETE
-def test_incorrect_delete_user_not_authenticated():
-    response = client.delete("/users/2")
+def test_correct_delete_user_with_no_target_by_admin(temporary_user, correct_token_admin):
+    response = client.delete(
+        f"/users/{temporary_user['id']}",
+        headers={"Authorization": f"Bearer {correct_token_admin}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"message": f"User with id 3 deleted successfully"}
+
+
+def test_correct_delete_user_with_no_targets_by_own_user(temporary_user, valid_user, correct_token_specified_user):
+    temporary_user_token = correct_token_specified_user(temporary_user["email"], valid_user["password"])
+    response = client.delete(
+        f"/users/{temporary_user['id']}",
+        headers={"Authorization": f"Bearer {temporary_user_token}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"message": f"User with id {temporary_user['id']} deleted successfully"}
+
+
+def test_incorrect_delete_user_not_authenticated(temporary_user):
+    response = client.delete(f"/users/{temporary_user['id']}")
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated"}
 
 
-def test_incorrect_delete_user_by_other_non_admin_user_not_authorized(correct_token_user):
+def test_incorrect_delete_user_by_other_non_admin_user_not_authorized(temporary_user, correct_token_user):
     response = client.delete(
-        "/users/3",
+        f"/users/{temporary_user['id']}",
         headers={"Authorization": f"Bearer {correct_token_user}"}
     )
 
@@ -330,24 +326,3 @@ def test_incorrect_delete_user_not_found(correct_token_admin):
 
     assert response.status_code == 404
     assert response.json() == {"detail": "User with id 999999 not found"}
-
-
-def test_correct_delete_user_with_targets_by_own_user(correct_token_user):
-    response = client.delete(
-        "/users/2",
-        headers={"Authorization": f"Bearer {correct_token_user}"}
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {"message": f"User with id 2 deleted successfully"}
-
-
-# Moved to the end for sake of the deletion tests
-def test_correct_delete_user_with_no_target_by_admin(correct_token_admin):
-    response = client.delete(
-        "/users/3",
-        headers={"Authorization": f"Bearer {correct_token_admin}"}
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {"message": f"User with id 3 deleted successfully"}

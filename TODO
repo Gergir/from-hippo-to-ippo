@@ -1,0 +1,123 @@
+FIX paths so the target and measurement -  are assigned so they start from 1 for each user, rather than incrementing globally across all users
+
+solution:
+# models/counters.py
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+from services.db_service import Base
+
+class UserTargetCounter(Base):
+    __tablename__ = "user_target_counters"
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), primary_key=True)
+    current_count: Mapped[int] = mapped_column(default=0)
+
+class TargetMeasurementCounter(Base):
+    __tablename__ = "target_measurement_counters"
+    target_id: Mapped[int] = mapped_column(ForeignKey('targets.id'), primary_key=True)
+    current_count: Mapped[int] = mapped_column(default=0)
+
+# Update your existing models
+class Target(Base):
+    __tablename__ = 'targets'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sequence_number: Mapped[int] = mapped_column()
+    # ... your existing fields ...
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'sequence_number', name='unique_user_target_sequence'),
+    )
+
+class Measurement(Base):
+    __tablename__ = 'measurements'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sequence_number: Mapped[int] = mapped_column()
+    # ... your existing fields ...
+
+    __table_args__ = (
+        UniqueConstraint('target_id', 'sequence_number', name='unique_target_measurement_sequence'),
+    )
+
+# queries.py
+def get_next_target_sequence(db: Session, user_id: int) -> int:
+    counter = db.query(UserTargetCounter).filter_by(user_id=user_id).first()
+    if not counter:
+        counter = UserTargetCounter(user_id=user_id, current_count=0)
+        db.add(counter)
+
+    counter.current_count += 1
+    db.flush()
+    return counter.current_count
+
+def get_next_measurement_sequence(db: Session, target_id: int) -> int:
+    counter = db.query(TargetMeasurementCounter).filter_by(target_id=target_id).first()
+    if not counter:
+        counter = TargetMeasurementCounter(target_id=target_id, current_count=0)
+        db.add(counter)
+
+    counter.current_count += 1
+    db.flush()
+    return counter.current_count
+
+def create_measurement(db: Session, target_id: int, measurement: MeasurementRequest) -> Measurement:
+    sequence_number = get_next_measurement_sequence(db, target_id)
+    db_measurement = Measurement(
+        **measurement.model_dump(),
+        target_id=target_id,
+        sequence_number=sequence_number
+    )
+    db.add(db_measurement)
+    db.commit()
+    db.refresh(db_measurement)
+    return db_measurement
+
+# Updated endpoints
+@router.get("/users/{user_id}/targets/{target_seq}/measurements/{measurement_seq}",
+            response_model=MeasurementResponse)
+async def get_target_measurement(
+    user_id: int,
+    target_seq: int,
+    measurement_seq: int,
+    db: Annotated[Session, Depends(get_db)]
+):
+    # First find the target using its sequence number
+    target = db.query(Target).filter(
+        Target.user_id == user_id,
+        Target.sequence_number == target_seq
+    ).first()
+
+    if not target:
+        raise exceptions.http_exception_not_found(
+            f"Target number {target_seq} for user {user_id} not found"
+        )
+
+    # Then find the measurement using its sequence number
+    measurement = db.query(Measurement).filter(
+        Measurement.target_id == target.id,
+        Measurement.sequence_number == measurement_seq
+    ).first()
+
+    if not measurement:
+        raise exceptions.http_exception_not_found(
+            f"Measurement number {measurement_seq} for target {target_seq} not found"
+        )
+
+    return measurement
+
+@router.get("/users/{user_id}/targets/{target_seq}/measurements",
+            response_model=list[MeasurementResponse])
+async def get_target_measurements(
+    user_id: int,
+    target_seq: int,
+    db: Annotated[Session, Depends(get_db)]
+):
+    target = db.query(Target).filter(
+        Target.user_id == user_id,
+        Target.sequence_number == target_seq
+    ).first()
+
+    if not target:
+        raise exceptions.http_exception_not_found(
+            f"Target number {target_seq} for user {user_id} not found"
+        )
+
+    return target.measurements

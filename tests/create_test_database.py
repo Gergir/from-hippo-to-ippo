@@ -31,9 +31,13 @@ def create_test_entities():
         start_date=datetime.date(2010, 10, 1), reached=False, public=False, measurements=[]
     )
 
-    test_measurement = Measurement(
+    test_measurement_for_admin = Measurement(
         id=1, target_id=1, weight=78.5, measurement_date=datetime.date(2010, 10, 1)
     )
+    test_measurement_for_user = Measurement(
+        id=2, target_id=2, weight=98.5, measurement_date=datetime.date(2020, 10, 1)
+    )
+
 
     with Session(engine) as session:
         session.add(admin_role)
@@ -43,7 +47,8 @@ def create_test_entities():
         session.add(test_user)
         session.add(test_target_for_admin)
         session.add(test_target_for_user)
-        session.add(test_measurement)
+        session.add(test_measurement_for_admin)
+        session.add(test_measurement_for_user)
         session.commit()
 
 
